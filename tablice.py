@@ -143,8 +143,8 @@ def save():
 def show(nr):
     if nr < 10:
         nr = '0' + str(nr)
-    print(str('photos/' + 'auto' + nr + '.jpg'))
-    find_plates(str('photos/' + 'auto' + nr + '.jpg'))
+    print(str('photos/' + 'auto' + str(nr) + '.jpg'))
+    find_plates(str('photos/' + 'auto' + str(nr) + '.jpg'))
 
 
 # show(4)
