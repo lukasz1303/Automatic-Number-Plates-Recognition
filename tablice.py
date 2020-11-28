@@ -4,6 +4,7 @@ import numpy as np
 import pytesseract
 from os import listdir
 from os.path import isfile, join
+import time
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
@@ -67,7 +68,7 @@ def find_plates(filename, output=None, zapis=False):
     cnts = imutils.grab_contours(cnts)
     cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:20]
 
-    screen_cnt, cord_x, cord_y, last, bound_rect = find_contour_plate(cnts, 0)
+    screen_cnt, cord_x, cord_y, last, bound_rect = find_contour_plate(cnts,0)
 
     if screen_cnt is None:
         screen_cnt = cnts[0]
@@ -120,8 +121,7 @@ def find_plates(filename, output=None, zapis=False):
 
     text = recognize_letters(letters, zapis)
 
-    if text != '' and not(len(text) == 1 and text not in '0123456789ABCDEFGHJKLMNOPRSTUVWXYZ') \
-            and screen_cnt is not None:
+    if text != '' and not(len(text) == 1 and text not in '0123456789ABCDEFGHJKLMNOPRSTUVWXYZ') and screen_cnt is not None:
         write_on_img(text, img2, cord_x, cord_y)
         cv2.rectangle(img2, (int(bound_rect[0]), int(bound_rect[1])), (int(bound_rect[0] + bound_rect[2]),
                                                                        int(bound_rect[1] + bound_rect[3])),
@@ -129,14 +129,17 @@ def find_plates(filename, output=None, zapis=False):
         print("Detected license plate Number is:", text)
 
     last_last = 0
-    while last < 20:
-        c1, c2 = cropped, cropped2
-        last, cropped, cropped2 = find_next(cnts, last, area, gray2, img2, img3, limit, zapis)
+    while last<20:
+        c1, c2 = cropped,cropped2
+        last, cropped, cropped2 = find_next(cnts,last,area,gray2,img2,img3,limit,zapis)
         if cropped is None:
             cropped, cropped2 = c1, c2
         if last == last_last:
             break
         last_last = last
+        # print('last_last = ', last_last)
+        # print('last2 = ', last)
+
 
     if zapis:
         cv2.imwrite(output, img2)
@@ -191,13 +194,15 @@ def find_contour_letters(cnts2, cropped, cropped2, limit):
     return letters
 
 
-def find_contour_plate(cnts, last):
+def find_contour_plate(cnts,last):
     screen_cnt, bound_rect2 = None, None
     cord_x, cord_y = 0, 0
+    # print('last = ', last)
 
     for c in cnts:
         last += 1
         area = cv2.contourArea(c)
+        # print(area)
         if area > 100000 or area < 1300:
             continue
         peri = cv2.arcLength(c, True)
@@ -207,9 +212,10 @@ def find_contour_plate(cnts, last):
         ar = w / float(h)
 
         if len(approx) >= 4:
-            if 2.3 <= ar <= 6:
+            if (2.3 <= ar <= 6) :
                 contours_poly = cv2.approxPolyDP(c, 3, True)
                 bound_rect = cv2.boundingRect(contours_poly)
+                # print(bound_rect)
                 if area2 < (bound_rect[2] * bound_rect[3] / 2.5):
                     continue
                 if bound_rect[2] > 1.5 * bound_rect[3]:
@@ -249,6 +255,8 @@ def crop_image2(mask, gray2, img3):
     cropped2 = img3[topx:bottomx + 1, topy:bottomy + 1]
 
     size = cropped.shape
+    # print(size)
+    # print(size[0]*size[1])
     area = size[0]*size[1]
     if size[0] == 0:
         size = (size[1] * 1.4, size[1])
@@ -306,10 +314,10 @@ def preprocessing_plate(mask, cropped, cropped2, margin=0):
 
 
 def find_next(cnts, last, area, gray2, img2, img3, limit, zapis):
-    screen_cnt, cord_x, cord_y, last, bound_rect = find_contour_plate(cnts[last:], last)
+    screen_cnt, cord_x, cord_y, last, bound_rect = find_contour_plate(cnts[last:],last)
 
     if screen_cnt is None:
-        if len(cnts) == 0:
+        if len(cnts) ==0:
             return 0
         screen_cnt = cnts[0]
     cropped, cropped2 = None, None
@@ -317,6 +325,7 @@ def find_next(cnts, last, area, gray2, img2, img3, limit, zapis):
 
         mask = np.zeros(gray2.shape, np.uint8)
         _ = cv2.drawContours(mask, [screen_cnt], 0, 255, -1, )
+
 
         cnts2, cropped, cropped2 = preprocessing_plate(mask, gray2, img3)
 
@@ -330,17 +339,21 @@ def find_next(cnts, last, area, gray2, img2, img3, limit, zapis):
             letters = find_contour_letters(cnts2, cropped, cropped2, limit)
 
         text = recognize_letters(letters, zapis)
-
-        if text != '' and not(len(text) == 1 and text not in '0123456789ABCDEFGHJKLMNOPRSTUVWXYZ') \
-                and screen_cnt is not None:
+        #print(len(text))
+        if text != '' and not(len(text) == 1 and text not in '0123456789ABCDEFGHJKLMNOPRSTUVWXYZ') and screen_cnt is not None:
+            # print(bound_rect)
             cv2.rectangle(img2, (int(bound_rect[0]), int(bound_rect[1])), (int(bound_rect[0] + bound_rect[2]),
                                                                            int(bound_rect[1] + bound_rect[3])),
                           (255, 0, 0), 3)
             if text != '' and screen_cnt is not None:
                 write_on_img(text, img2, cord_x, cord_y)
+                print(cord_x,cord_y)
             print("Detected license plate Number is:", text)
     return last, cropped, cropped2
 
 
 show(23)
-# save()
+t = time.time()
+
+save()
+print(time.time() - t)
